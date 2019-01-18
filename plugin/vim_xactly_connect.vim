@@ -1,1 +1,3 @@
-echo "working"
+python << EOF
+	print "working"
+EOF
