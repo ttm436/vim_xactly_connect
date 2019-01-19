@@ -1,21 +1,43 @@
+import neovim
+import json
 import jaydebeapi as jdb
 
 conn = None
-try:
-    conn = jdb.connect(
-        "com.xactly.connect.jdbc.Driver",
-        "jdbc:xactly://implement1.xactlycorp.com:443?useSSL=true",
-        ["tmurdock_boomi@xactlyincent.com","14mD3Lt4"],
-        "/Users/tmurdock/down/xjdbc-with-dependencies-1.2.0-RELEASE.jar"
-    )
-except Exception as e:
-    print(e)
-    exit()
+curs = None
+settings = None
+with open('~/xactly_connect.json') as settings_file:
+    settings = json.load(settings_file)
 
+def close_connection():
+    if (curs):
+        curs.close()
+        curs = None
+    if (conn):
+        conn.close()
+        conn = None
 
-curs = conn.cursor()
-curs.execute("select * from (show step s_testing);")
-print(curs.fetchall())
+def set_connection(name):
 
-curs.close()
-conn.close()
+    setting = settings[name]
+    close_connection()
+    try:
+        conn = jdb.connect(
+            setting['driver_class'],
+            setting['url'],
+            [setting['username'],setting['password']],
+            setting['path']
+        )
+    except Exception as e:
+        print(e)
+        exit()
+    curs = conn.cursor()
+
+def execute_command(command)
+    if (curs):
+        curs.execute()
+    else:
+        print("You must make a connection before executing a command")
+
+def print_result()
+    print(curs.fetchall())
+
