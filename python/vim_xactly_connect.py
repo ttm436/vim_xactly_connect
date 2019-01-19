@@ -1,4 +1,4 @@
-import neovim
+import vim
 import json
 import jaydebeapi as jdb
 
