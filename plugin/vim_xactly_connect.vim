@@ -21,23 +21,28 @@ sys.path.insert(0, python_root_dir)
 import vim_xactly_connect as vxc
 EOF
 
-command! -nargs=1 XCSetConnection call XactlyConnectSetConnection(<q-args>)
-function! XactlyConnectSetConnection(name)
-	python vxc.open_connection(name)
+command! -nargs=1 XCConnectionOpen call XactlyConnectConnectionOpen(<q-args>)
+function! XactlyConnectConnectionOpen(name)
+	python vxc.connection_open(name)
 endfunction
 
-command! -nargs=1 XCExecuteCommand call XactlyConnectExecuteCommand(<q-args>)
-function! XactlyConnectExecuteCommand(command)
-	python vxc.execute_command(command)
+command! -nargs=1 XCConnectionClose call XactlyConnectConnectionClose(<q-args>)
+function! XactlyConnectConnectionClose(name)
+	python vxc.connection_close(name)
 endfunction
 
-command! -nargs=0 XCPrintResult call XactlyConnectPrintResult()
-function! XactlyConnectPrintResult()
+command! -nargs=1 XCCommandExecute call XactlyConnectCommandExecute(<q-args>)
+function! XactlyConnectCommandExecute(command)
+	python vxc.command_execute(command)
+endfunction
+
+command! -nargs=0 XCResultPrint call XactlyConnectResultPrint()
+function! XactlyConnectResultPrint()
 	python vxc.result_print()
 endfunction
 
-command! -nargs=0 XCWriteResult call XactlyConnectWriteResult()
-function! XactlyConnectWriteResult()
+command! -nargs=0 XCResultWrite call XactlyConnectResultWrite()
+function! XactlyConnectResultWrite()
 	python vxc.result_write()
 endfunction
 
