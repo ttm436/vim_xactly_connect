@@ -8,7 +8,7 @@ settings = None
 with open('/Users/tmurdock/xactly_connect.json') as settings_file:
     settings = json.load(settings_file)
 
-def close_connection():
+def connection_close():
     global conn
     global curs
     if (curs is not None):
@@ -18,11 +18,11 @@ def close_connection():
         conn.close()
         conn = None
 
-def open_connection(name):
+def connection_open(name):
     global conn
     global curs
     setting = settings[name]
-    close_connection()
+    connection_close()
     try:
         conn = jdb.connect(
             setting['driver_class'],
@@ -35,7 +35,7 @@ def open_connection(name):
         exit()
     curs = conn.cursor()
 
-def execute_command(command):
+def command_execute(command):
     if (curs):
         curs.execute(command)
     else:
