@@ -1,0 +1,4 @@
+jaydebeapi
+objectpath
+tqdm
+pynvim

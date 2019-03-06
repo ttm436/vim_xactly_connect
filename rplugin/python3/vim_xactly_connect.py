@@ -4,7 +4,6 @@ import jaydebeapi as jdb
 from tqdm import tqdm
 import objectpath as objp
 from datetime import datetime
-from contextlib import redirect_stdout
 
 HOME_DIR      = os.path.expanduser('~')
 VXC_HOME_DIR  = HOME_DIR + '/.vxc/'
@@ -12,6 +11,8 @@ CACHE_DIR     = VXC_HOME_DIR + '/cache/'
 SETTINGS_PATH = VXC_HOME_DIR + 'settings.json'
 RESULTS_PATH  = VXC_HOME_DIR + 'vxc_out'
 DATETIME_PARSE = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+# used to suppress the puke from xjdbc driver on sql execution
 class suppress_stdout_stderr(object):# {{{
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in
@@ -268,50 +269,6 @@ union select name, id, modified_instant, 'iterator' as type from (show iterators
             self.cache[v['id']] = v
 
 # }}}
-#object_describe# {{{
-
-    def object_describe(self, name=None, ID=None):
-        ret = []
-        if not isinstance(name, list):
-            name = [name] if name is not None else []
-        if not isinstance(ID, list):
-            ID = [ID] if ID is not None else []
-
-        if len(name) > 0:
-            ID = [self.object_name2id(n) for n in name]
-        if len(ID) > 0:
-            for i in ID:
-                ret.extend(self.object_describe_helper(i))
-
-        with open( RESULTS_PATH, 'w') as file_out:
-            #result string takes list of lists (or tuples)
-            desc = (('name',),( 'ID',),( 'type',),( 'depth',),( 'contained_by_name',),( 'contained_by_id',))
-            file_out.write(result2string(ret, desc))
-
-# }}}
-#object_describe_helper# {{{
-
-    def object_describe_helper(self, ID=None):
-        ret_list = []
-        cur_dict = {}
-        if ID is not None and ID in self.cache:
-            cur_dict = self.cache[ID]
-            # name ID type depth contained_by_name contained_by_id
-            ret_list = [ (cur_dict['name'], cur_dict['id'], cur_dict['type'], 0, '', '') ]
-            if 'command' in cur_dict:
-                ret_list.append(('command', '', 'command', 1, cur_dict['name'], cur_dict['id']))
-            if 'contains' in cur_dict:
-                for next_id in cur_dict['contains']:
-                    ret_list.extend( list( map(
-                        lambda x: (
-                            x[0], x[1], x[2], x[3] + 1,
-                            cur_dict['name'] if x[4] == '' else x[4],
-                            cur_dict['id'] if x[5] == '' else x[5]
-                        ), self.object_describe_helper(next_id)
-                    )))
-        return ret_list
-
-# }}}
 #object_search# {{{
 
     def object_search(self, search=None, name=None, ID=None, type=None, reverse=False):
@@ -331,15 +288,14 @@ union select name, id, modified_instant, 'iterator' as type from (show iterators
                     cmd += ' and '
                 cmd += "'" + type + "' in @.type"
         if cmd == '':
-            cmd = '1 is 1'
-        id_list = list(self.cache_tree.execute("$..*[" + cmd + "].id"))
-        self.object_describe(ID=id_list)
+            cmd = "'' in @.name"
+        return list(self.cache_tree.execute("$..*[" + cmd + "]"))
 
 # }}}
 #object_reverse_search# {{{
 
     def object_reverse_search(self, name=None, ID=None, type=None):
-        self.object_search(None,name,ID,type,True)
+        return self.object_search(None,name,ID,type,True)
 
 # }}}
 #object_name2id# {{{
