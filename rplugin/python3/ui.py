@@ -21,12 +21,13 @@ class WriteBuf(TextIOWrapper):
     def write(self, string):
         lines = list(string.split("\n"))
         for i, l in enumerate(lines):
+            if i > 0:
+                self.index += 1
             if l != '':
                 if self.insert:
                     self._insert_line(l)
                 else:
                     self._write_line(l)
-                self.index += 1
 
     def _write_line(self, line):
         while self.index >= len(self.buf):
@@ -52,22 +53,25 @@ class VxcPlugin(object):
 
     def __init__(self, nvim):
         self.nvim = nvim
+        self.buf = None
 
-    @pynvim.function('TestFunction', sync=False)
-    def testfunction(self, args):
+    @pynvim.command('VxcTest', nargs='0', range='', sync=False)
+    def vxc_test(self, args, range):
+        if self.buf is None:
+            self.nvim.command('enew')
+            self.nvim.command('setlocal bt=nofile noswf')
+            self.nvim.command('file __vxc__')
+            self.bufnr = self.nvim.eval('bufnr(\'%\')')
+            self.buf = self.nvim.buffers[self.bufnr]
+
+    @pynvim.command('VxcConnect', nargs='1', range='', sync=False)
+    def vxc_connect(self, args, range):
         buf = self.nvim.current.buffer
         with WriteBuf(buf) as wbuf, redirect_stdout(wbuf):
-            for i in tqdm(range(0,1000), file=sys.stdout):
-                time.sleep(.01)
-
-    @pynvim.function('TestVxcConnect', sync=False)
-    def vxc_connect(self, args):
-        buf = self.nvim.current.buffer
-        with WriteBuf(buf,lineoverwrite=True) as wbuf, redirect_stdout(wbuf):
             self.conn = vxc.connection(args[0])
 
-    @pynvim.function('TestVxcSearch', sync=True)
-    def vxc_search(self, args):
+    @pynvim.command('VxcSearch', nargs='1', range='', sync=True)
+    def vxc_search(self, args, range):
         result = self.conn.object_search(args[0])
         names = reduce(lambda a, b: a + "\n" + b, list(map(lambda x: "\r" + x['name'], result)))
         buf = self.nvim.current.buffer
@@ -75,9 +79,9 @@ class VxcPlugin(object):
         with WriteBuf(buf) as wbuf, redirect_stdout(wbuf):
             print(names)
 
-    @pynvim.function('TestVxcReverseSearch', sync=True)
-    def vxc_reverse_search(self, args):
-        name = self.nvim.eval('expand("<cword>")')
+    @pynvim.command('VxcReverseSearch', nargs='0', range='', sync=True)
+    def vxc_reverse_search(self, args, range):
+        name = self._current_word()
         result = self.conn.object_reverse_search(name)
         names = reduce(lambda a, b: a + "\n" + b, list(map(lambda x: "\r" + x['name'], result)))
         buf = self.nvim.current.buffer
@@ -85,18 +89,18 @@ class VxcPlugin(object):
         with WriteBuf(buf) as wbuf, redirect_stdout(wbuf):
             print(names)
 
-    @pynvim.function('TestVxcShowAll', sync=True)
-    def vxc_showall(self, args):
+    @pynvim.command('VxcShowAll', nargs='0', range='', sync=True)
+    def vxc_showall(self, args, range):
         result = self.conn.object_search()
-        names = reduce(lambda a, b: a + "\n" + b, list(map(lambda x: "\r" + x['name'], result)))
+        names = reduce(lambda a, b: a + "\n" + b, list(map(lambda x: x['name'], result)))
         buf = self.nvim.current.buffer
         buf[:] = []
         with WriteBuf(buf) as wbuf, redirect_stdout(wbuf):
             print(names)
 
-    @pynvim.function('TestVxcDescribe', sync=True)
-    def vxc_describe(self, args):
-        name = self.nvim.eval('expand("<cword>")')
+    @pynvim.command('VxcDescribe', nargs='0', range='', sync=True)
+    def vxc_describe(self, args, range):
+        name = self._current_word()
         index = self.nvim.eval('line(".")')
         ret = self.vxc_describe_helper(name)
         buf = self.nvim.current.buffer
@@ -105,9 +109,9 @@ class VxcPlugin(object):
                 for name in ret[1:]:
                     print(name)
 
-    @pynvim.function('TestVxcEdit', sync=True)
-    def vxc_edit(self, args):
-        name = self.nvim.eval('expand("<cword>")')
+    @pynvim.command('VxcEdit', nargs='0', range='', sync=True)
+    def vxc_edit(self, args, range):
+        name = self._current_word()
         result = self.conn.object_search(name=name)
         if len(result) > 0 and 'command' in result[0]:
             buf = self.nvim.current.buffer
@@ -142,4 +146,6 @@ class VxcPlugin(object):
                         ret.extend(list(map( lambda a: "  " + a, self.vxc_describe_helper(ID=i) )))
         return ret
 
+    def _current_word(self):
+        return self.nvim.eval('expand("<cword>")')
 # }}}

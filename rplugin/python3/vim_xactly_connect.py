@@ -217,7 +217,7 @@ union select name, id, modified_instant, 'iterator' as type from (show iterators
                             'name':             str(x[0]),
                             'id':               str(x[1]),
                             'type':             'iterator',
-                            'contains':         str(x[2]),
+                            'contains':         [str(x[2])],
                             'over':             str(x[3]),
                             'modified_instant': str(x[4])
                         } for x in self.result
@@ -230,6 +230,7 @@ union select name, id, modified_instant, 'iterator' as type from (show iterators
             for obj in objs:
                 obj_name = obj[0]
                 obj_type = obj[3]
+                count = 0
                 for t, c in types.items():
                     if obj_type == t:
                         if cmd[t] != '':
@@ -256,7 +257,7 @@ union select name, id, modified_instant, 'iterator' as type from (show iterators
             # referenced variables
             ':([a-zA-Z0-9_]+)'
         ]
-        for v in steps:
+        for v in tqdm(steps, file=sys.stdout):
             contains = []
             cmd = v['command']
             # invoked pipeline/step/iterator
